@@ -21,6 +21,8 @@ import socket
 import random
 import thread
 import unicodedata
+import logging
+from logging.handlers import TimedRotatingFileHandler
 
 from twisted.internet.protocol import Protocol, Factory, DatagramProtocol
 from twisted.internet import reactor
@@ -62,11 +64,15 @@ lastVNC = ''
 def logprint(x):
 	now = time.time()
 	t = time.strftime("%Y-%m-%d %H:%M:%S") + ("%1.4f" % (now - int(now)))[1:] + ": "
-	print(t + x)
+	logger.info(t + x)
+	
+def logprint2(x):
+	try:
+		logger.info(x)
+	except TypeError:
+		pass
 
 def twitter_it(x, ip):
-	#remove the "return" line and get OAUTH values from Twitter (http://dev.twitter.com) if you want to have this tweet
-	return
 	global myid
 	wait = random.randint(60,600) + random.randint(60,600)
 	time.sleep(wait)
@@ -101,13 +107,6 @@ def twitter_it(x, ip):
 	api.update_status(msg)                                                                                                                                                                                                       
 	logprint("Tweeted: " + msg)
 
-class flushfile(object):
-	def __init__(self, f):
-		self.f = f
-	def write(self, x):
-		self.f.write(x)
-		self.f.flush()
-
 class tFakeMSSQL(Protocol):
 	def dataReceived(self, data):
 		global lastMSSQL
@@ -125,18 +124,18 @@ class tFakeMSSQL(Protocol):
 						maj, minor = struct.unpack('!LH', data[p + 8:p + l + 8])
 						tds_response = tds_response_a + binascii.hexlify(data[p + 8:p + l + 8]) + '0200'
 						tds_response_created = 1
-						print "\tVersion:\n\t\tMaj: %s\n\t\tMin: %s" % (hex(socket.ntohl(maj)), hex(socket.ntohl(minor)))
+						logprint2("\tVersion:\n\t\tMaj: %s\n\t\tMin: %s" % (hex(socket.ntohl(maj)), hex(socket.ntohl(minor))))
 					if tokentype == 1:
 						enc, = struct.unpack('!B', data[p + 8:p + l + 8])
-						print "\tEncryption: ", enctype[enc]
+						logprint2("\tEncryption: %s" % enctype[enc])
 					if (tokentype == 2) & (l > 1):
-						print "\tInstance: ", data[p + 8:p + l + 8]
+						logprint2("\tInstance: %s" % str(data[p + 8:p + l + 8]))
 					if tokentype == 3:
 						threadid, = struct.unpack('!L', data[p + 8:p + l + 8])
-						print "\tThread ID: ", threadid
+						logprint2("\tThread ID: %s" % str(threadid))
 					if tokentype == 4:
 						mars, = struct.unpack('!B', data[p + 8:p + l + 8])
-						print "\tMARS: ", marstype[mars]
+						logprint2("\tMARS: %s" % str(marstype[mars]))
 					p1 = p2 - 1
 					p2 = p1 + 6
 				if tds_response_created == 0:
@@ -147,18 +146,18 @@ class tFakeMSSQL(Protocol):
 				logprint("TDS 7/8 Login packet on port %d from: %s (%d/TCP):" % (self.transport.getHost().port, self.transport.getPeer().host, self.transport.getPeer().port))
 				if len(data) > p2:
 					l, v, ps, cv, pid, cid, o1, o2, o3, r, tz, lc = struct.unpack('=LLLLLLBBBBLL', data[p1:p2])
-					print '\tLen: ', l
-					print '\tVersion: ', hex(socket.ntohl(v))
-					print '\tPacket Size: ', ps
-					print '\tClient Version: ', socket.ntohl(cv)
-					print '\tClient PID: ', pid
-					print '\tConnection ID: ', cid
-					print '\tOption Flag 1: ', o1
-					print '\tOption Flag 2: ', o2
-					print '\tOption Flag 3: ', o3
-					print '\tType Flag: ', r
-					print '\tClient TZ: ', tz
-					print '\tClient Language Code: ', lc
+					logprint2('\tLen: %i' % l)
+					logprint2('\tVersion: %s' % hex(socket.ntohl(v)))
+					logprint2('\tPacket Size: %i' % ps)
+					logprint2('\tClient Version: %i' % socket.ntohl(cv))
+					logprint2('\tClient PID: %i' % pid)
+					logprint2('\tConnection ID: %i' % cid)
+					logprint2('\tOption Flag 1: %i' % o1)
+					logprint2('\tOption Flag 2: %i' % o2)
+					logprint2('\tOption Flag 3: %i' % o3)
+					logprint2('\tType Flag: %i' % r)
+					logprint2('\tClient TZ: %i' % tz)
+					logprint2('\tClient Language Code: %i' % lc)
 					p1 = p2
 					p2 = p1 + 4
 					for n in logindata:
@@ -171,13 +170,13 @@ class tFakeMSSQL(Protocol):
 									b = ord(byte) ^ 0xa5
 									reverse_b = (b & 0xf) << 4 | (b & 0xf0) >> 4
 									pw = pw + chr(reverse_b)
-								print '\t%s: %s' % (n, pw.encode("utf-8"))
+								logprint2('\t%s: %s' % (n, pw.encode("utf-8")))
 							else:
 								s = data[o + 8:o + (2 * l) + 8]
-								print '\t%s: %s' % (n, s.encode("utf-8"))
+								logprint2('\t%s: %s' % (n, s.encode("utf-8")))
 						p1 = p2
 						p2 = p1 + 4
-					print '\tClient ID: ', binascii.hexlify(data[p1:p1+6])
+					logprint2('\tClient ID: %s' % binascii.hexlify(data[p1:p1+6]))
 					self.transport.loseConnection()
 					if(lastMSSQL != self.transport.getPeer().host):
 						lastMSSQL = self.transport.getPeer().host
@@ -203,22 +202,22 @@ class tFakeTS(Protocol):
 			l, c = struct.unpack('BB',x224_data[:2])
 			if c == 0xe0:
 				x224 = struct.unpack('!HHBH', x224_data[2:9])
-				print "\tX224 Connection Request. Responding..."
+				logprint2("\tX224 Connection Request. Responding...")
 				self.transport.write(struct.pack('!BBHBBHHB', v, 0, 11, 6, 0xd0, x224[1], 0x1234, x224[2]))
-				print "\tLogin: %s" % x224_data[6:]
+				logprint2("\tLogin: %s" % x224_data[6:])
 				if(lastTS != self.transport.getPeer().host):
 					lastTS = self.transport.getPeer().host
 					thread.start_new_thread(twitter_it, ("A host at %s (%s, %s - %s) tried to log into my honeypot's fake Terminal Services server... #netmenaces", lastTS))							
 			else:
-				print "\tX224 Unrecognized code:"
-				print binascii.hexlify(data)
+				logprint2("\tX224 Unrecognized code:")
+				logprint2(binascii.hexlify(data))
 				self.transport.loseConnection()
 				if(lastTS != self.transport.getPeer().host):
 					lastTS = self.transport.getPeer().host
 					thread.start_new_thread(twitter_it, ("A host at %s (%s, %s - %s) connected to my honeypot's fake Terminal Services server... #netmenaces", lastTS))							
 		else:
-			print "Data inconsistent... dropping connection."
-			print binascii.hexlify(data)
+			logprint2("Data inconsistent... dropping connection.")
+			logprint2(binascii.hexlify(data))
 			self.transport.loseConnection()
 			if(lastTS != self.transport.getPeer().host):
 				lastTS = self.transport.getPeer().host
@@ -298,7 +297,7 @@ class uFakeMSSQL(DatagramProtocol):
 				lastSQLSlammer = host
 				thread.start_new_thread(twitter_it, ('A host at %s (%s, %s - %s) requested that my honeypot join their SQLSlammer party... #netmenaces', lastSQLSlammer))
 		else:
-			logprint("UDPData from: %s (%d/UDP):\n%s" % (host, port, binascii.hexlify(data)))
+			logprint('UDPData from: %s (%d/UDP):\n%s' % (host, port, binascii.hexlify(data)))
 
 class uFakeSIP(DatagramProtocol):
 	def datagramReceived(self, data, (host, port)):
@@ -308,10 +307,9 @@ class uFakeSIP(DatagramProtocol):
 		if(lastSIPPER != host):
 			lastSIPPER = host
 			thread.start_new_thread(twitter_it, ('A host at %s (%s, %s - %s) wants to talk SIP to my honeypot... #netmenaces', lastSIPPER))
-		logprint("SIP Data from: %s (%d/UDP):\n%s" % (host, port, data))
+		logprint('SIP Data from: %s (%d/UDP):\n%s' % (host, port, data))
 
 random.seed()
-sys.stdout = flushfile(sys.stdout)
 fDump = Factory()
 fDump.protocol = Dumper
 fMSSQL = Factory()
@@ -323,9 +321,13 @@ fVNC.protocol = tFakeVNC
 fRAdmind = Factory()
 fRAdmind.protocol = tFakeRAdmind
 
-logprint("Starting up...")
-# Uncomment the following and install GeoLiteCity data from MaxMind (http://www.maxmind.com) if you want to use the tweeting functionality.
-#gi = GeoIP.open("/usr/share/GeoIP/GeoLiteCity.dat",GeoIP.GEOIP_STANDARD)
+logger = logging.getLogger('Rotating Log')
+logger.setLevel(logging.INFO)
+handler = TimedRotatingFileHandler('toms_honeypot.log', when='midnight', interval=1)
+logger.addHandler(handler)
+
+logprint('Starting up...')
+gi = GeoIP.open('/usr/share/GeoIP/GeoLiteCity.dat',GeoIP.GEOIP_STANDARD)
 reactor.listenTCP(1433, fMSSQL, interface = interface)
 reactor.listenTCP(3389, fTS, interface = interface)
 reactor.listenTCP(5900, fVNC, interface = interface)
@@ -334,4 +336,4 @@ reactor.listenTCP(4899, fRAdmind, interface = interface)
 reactor.listenUDP(1434, uFakeMSSQL(), interface = interface)
 reactor.listenUDP(5060, uFakeSIP(), interface = interface)
 reactor.run()
-logprint("Shutting down...")
+logprint('Shutting down...')
