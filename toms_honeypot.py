@@ -73,7 +73,9 @@ def logprint2(x):
 		pass
 
 def twitter_it(x, ip):
-	global myid
+	#remove the "return" line and get OAUTH values from Twitter (http://dev.twitter.com) if you want to have this tweet
+    return
+    global myid
 	wait = random.randint(60,600) + random.randint(60,600)
 	time.sleep(wait)
 	# necessary auth values
@@ -327,7 +329,8 @@ handler = TimedRotatingFileHandler('toms_honeypot.log', when='midnight', interva
 logger.addHandler(handler)
 
 logprint('Starting up...')
-gi = GeoIP.open('/usr/share/GeoIP/GeoLiteCity.dat',GeoIP.GEOIP_STANDARD)
+# Uncomment the following and install GeoLiteCity data from MaxMind (http://www.maxmind.com) if you want to use the tweeting functionality.
+#gi = GeoIP.open('/usr/share/GeoIP/GeoLiteCity.dat',GeoIP.GEOIP_STANDARD)
 reactor.listenTCP(1433, fMSSQL, interface = interface)
 reactor.listenTCP(3389, fTS, interface = interface)
 reactor.listenTCP(5900, fVNC, interface = interface)
