@@ -28,12 +28,12 @@ from twisted.internet.protocol import Protocol, Factory, DatagramProtocol
 from twisted.internet import reactor
 
 # uncomment these if you want to use the tweeting functionality
-import tweepy
-import GeoIP
+# import tweepy
+# import GeoIP
 
 # you MUST change these...
-interface = '192.168.1.19'
-myid = '1'
+interface = '12.34.56.78'
+myid = ''
 
 SQLPing = binascii.unhexlify('02')
 SQLSlammer = binascii.unhexlify('\
@@ -74,15 +74,15 @@ def logprint2(x):
 
 def twitter_it(x, ip):
     #remove the "return" line and get OAUTH values from Twitter (http://dev.twitter.com) if you want to have this tweet
-    #return
+    return
     global myid
     wait = random.randint(60,600) + random.randint(60,600)
     time.sleep(wait)
     # necessary auth values
-    CONSUMER_KEY = 'IjbOPGV7ig3j6aXLFyiitQ'
-    CONSUMER_SECRET = '02GG9qhh4mYfLS73c3qDRtVbL24I1wTvLtsay5Ng1WA'
-    ACCESS_KEY = '168692722-SlFpV1zHfQ8IwdFmuNSDSopUE0CJPiXy78wYXUoj'
-    ACCESS_SECRET = 'U8Ba63Zjw4AdTA0GFuiAAMWMIPe0Y6CMoPz8XLq3MY'
+    CONSUMER_KEY = '<YOU NEED TO REPLACE THIS>'
+    CONSUMER_SECRET = '<YOU NEED TO REPLACE THIS>'
+    ACCESS_KEY = '<YOU NEED TO REPLACE THIS>'
+    ACCESS_SECRET = '<YOU NEED TO REPLACE THIS>'
     # end auth values
     gir = gi.record_by_addr(ip)
     if gir != None:
@@ -332,8 +332,9 @@ handler = TimedRotatingFileHandler('toms_honeypot.log', when='midnight', interva
 logger.addHandler(handler)
 
 logprint('Starting up...')
-# Uncomment the following and install GeoLiteCity data from MaxMind (http://www.maxmind.com) if you want to use the tweeting functionality.
-gi = GeoIP.open('/usr/share/GeoIP/GeoLiteCity.dat',GeoIP.GEOIP_STANDARD)
+# Uncomment the following and install GeoLiteCity data from MaxMind 
+# (http://www.maxmind.com) if you want to use the tweeting functionality.
+# gi = GeoIP.open('/usr/share/GeoIP/GeoLiteCity.dat',GeoIP.GEOIP_STANDARD)
 reactor.listenTCP(1433, fMSSQL, interface = interface)
 reactor.listenTCP(3389, fTS, interface = interface)
 reactor.listenTCP(5900, fVNC, interface = interface)
